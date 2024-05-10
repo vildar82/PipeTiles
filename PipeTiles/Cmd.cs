@@ -3,6 +3,7 @@ using System.Windows;
 using RxBim.Command.Civil;
 using RxBim.Shared;
 using RxBim.Shared.Autocad;
+using Application = Autodesk.AutoCAD.ApplicationServices.Core.Application;
 
 namespace PipeTiles;
 
@@ -14,7 +15,7 @@ public class Cmd : RxBimCommand
     {
         try
         {
-            win.ShowDialog();
+            Application.ShowModalWindow(win);
             return PluginResult.Succeeded;
         }
         catch (Exception ex)

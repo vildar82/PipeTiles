@@ -10,20 +10,25 @@ namespace PipeTiles;
 
 public class MainViewModel : ObservableObject
 {
+    private static PluginSettings? _settings;
     private readonly IPipeService _pipeService;
     private readonly ITileService _tileService;
     private Network? _network;
 
     public MainViewModel(
         IPipeService pipeService,
-        ITileService tileService)
+        ITileService tileService,
+        PluginSettings pluginSettings)
     {
+        _settings ??= pluginSettings;
         _pipeService = pipeService;
         _tileService = tileService;
 
         Networks = pipeService.GetNetworks();
         Network = Networks.FirstOrDefault();
     }
+
+    public PluginSettings Settings => _settings ?? new();
 
     public List<Network> Networks { get; set; }
 
@@ -39,9 +44,9 @@ public class MainViewModel : ObservableObject
     {
         try
         {
-            var pipes = _pipeService.GetTilePipes(Network!);
-            _tileService.CreateTiles(pipes, Network!.Name);
-            MessageBox.Show("Готово");
+            var pipes = _pipeService.GetTilePipes(Network!, Settings);
+            var tileCount = _tileService.CreateTiles(pipes, Network!.Name, Settings);
+            MessageBox.Show($"Готово. Построено {tileCount} плиток.");
         }
         catch (Exception ex)
         {

@@ -1,0 +1,2 @@
+﻿Установить PipeTiles.exe или скопировать папку PipeTiles.bundle в %appdata%\Autodesk\ApplicationPlugins\
+Команда PipeTiles

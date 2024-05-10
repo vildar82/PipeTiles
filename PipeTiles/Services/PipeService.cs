@@ -15,15 +15,11 @@ namespace PipeTiles;
 public class PipeService : IPipeService
 {
     private readonly ITransactionService _transactionService;
-    private readonly PluginSettings _pluginSettings;
-    private readonly Tolerance _tolerance = new Tolerance(0.001, 0.001);
+    private readonly Tolerance _tolerance = new (0.1, 0.1);
 
-    public PipeService(
-        ITransactionService transactionService,
-        PluginSettings pluginSettings)
+    public PipeService(ITransactionService transactionService)
     {
         _transactionService = transactionService;
-        _pluginSettings = pluginSettings;
     }
 
     public List<Network> GetNetworks()
@@ -39,7 +35,7 @@ public class PipeService : IPipeService
         });
     }
 
-    public List<TilePipe> GetTilePipes(Network network)
+    public List<TilePipe> GetTilePipes(Network network, PluginSettings settings)
     {
         return _transactionService.RunInDocumentTransaction(() =>
         {
@@ -53,14 +49,14 @@ public class PipeService : IPipeService
                 throw new Exception("Трубы сети не найдены");
 
             var canals = pipes
-                .Where(p => PartSizeMatch(p.PartSizeName, _pluginSettings.PartSizeCanalMatch))
+                .Where(p => PartSizeMatch(p.PartSizeName, settings.PartSizeCanalMatch))
                 .ToList();
             if (!canals.Any())
                 throw new Exception("Трубы каналов не найдены");
 
-            var protects = _pluginSettings.PartSizeProtectMatch.IsNullOrEmpty()
+            var protects = settings.PartSizeProtectMatch.IsNullOrEmpty()
                 ? new List<Pipe>()
-                : pipes.Where(p => PartSizeMatch(p.PartSizeName, _pluginSettings.PartSizeProtectMatch)).ToList();
+                : pipes.Where(p => PartSizeMatch(p.PartSizeName, settings.PartSizeProtectMatch)).ToList();
 
             return canals.SelectMany(c => GetTilePipes(c, protects)).ToList();
         });
@@ -74,10 +70,15 @@ public class PipeService : IPipeService
         foreach (var protect in allProtects)
         {
             // Проверка, что защитная труба попадает на канал.
-            if (!CheckProtectIsOnStraightLine(pipe, pipeVec, protect, out var protectStart, out var protectEnd))
+            if (!CheckProtectIsOnStraightLine(pipe, pipeVec, protect, out var protectStart, out var protectEnd, out var fullProtect))
                 continue;
 
-            tilePipes = tilePipes.SelectMany(t => SplitTilePipes(t, protectStart, protectEnd, pipeVec)).ToList();
+            if (fullProtect)
+                return Enumerable.Empty<TilePipe>();
+
+            tilePipes = tilePipes
+                .SelectMany(t => SplitTilePipes(t, protectStart, protectEnd, pipeVec))
+                .ToList();
         }
 
         return tilePipes;
@@ -90,10 +91,14 @@ public class PipeService : IPipeService
         Vector3d pipeVec)
     {
         var vecTileStartToProtectStart = protectStart - tilePipe.StartPoint;
-        if (vecTileStartToProtectStart.IsCodirectionalTo(pipeVec, _tolerance))
-        {
-            var startTile = new TilePipe()
-        }
+        if (vecTileStartToProtectStart.IsCodirectionalTo(pipeVec, _tolerance) &&
+            vecTileStartToProtectStart.Length > 0.05)
+            yield return new (tilePipe, tilePipe.StartPoint, tilePipe.StartPoint + vecTileStartToProtectStart);
+
+        var vecTileEndToProtectEnd = protectEnd - tilePipe.EndPoint;
+        if (!vecTileEndToProtectEnd.IsCodirectionalTo(pipeVec, _tolerance) &&
+            vecTileEndToProtectEnd.Length > 0.05)
+            yield return new (tilePipe, tilePipe.EndPoint + vecTileEndToProtectEnd, tilePipe.EndPoint);
     }
 
     private bool CheckProtectIsOnStraightLine(
@@ -101,8 +106,10 @@ public class PipeService : IPipeService
         Vector3d pipeVec,
         Pipe protect,
         out Point3d protectStart,
-        out Point3d protectEnd)
+        out Point3d protectEnd,
+        out bool fullProtect)
     {
+        fullProtect = false;
         protectStart = protect.StartPoint;
         protectEnd = protect.EndPoint;
         var protectVec = protectEnd - protectStart;
@@ -110,24 +117,30 @@ public class PipeService : IPipeService
         if (!pipeVec.IsParallelTo(protectVec, _tolerance))
             return false;
 
-        if (!pipeVec.IsCodirectionalTo(protectVec))
+        if (!pipeVec.IsCodirectionalTo(protectVec, _tolerance))
         {
             protectStart = protect.EndPoint;
             protectEnd = protect.StartPoint;
         }
 
-        if (pipe.EndPoint.IsEqualTo(protectStart) ||
-            pipe.StartPoint.IsEqualTo(protectEnd))
+        if (pipe.EndPoint.IsEqualTo(protectStart, _tolerance) ||
+            pipe.StartPoint.IsEqualTo(protectEnd, _tolerance))
             return false;
 
         var isStartEquals = pipe.StartPoint.IsEqualTo(protectStart, _tolerance);
         var isEndEquals = pipe.EndPoint.IsEqualTo(protectEnd, _tolerance);
 
+        if (isStartEquals && isEndEquals)
+        {
+            fullProtect = true;
+            return true;
+        }
+
         if (!isStartEquals)
         {
             var vecProtectEndToStart = protectEnd - pipe.StartPoint;
             if (!pipeVec.IsParallelTo(vecProtectEndToStart, _tolerance) ||
-                !vecProtectEndToStart.IsCodirectionalTo(pipeVec))
+                !vecProtectEndToStart.IsCodirectionalTo(pipeVec, _tolerance))
                 return false;
         }
 
@@ -135,7 +148,7 @@ public class PipeService : IPipeService
         {
             var vecProtectStartToEnd = protectStart - pipe.EndPoint;
             if (!pipeVec.IsParallelTo(vecProtectStartToEnd, _tolerance) ||
-                vecProtectStartToEnd.IsCodirectionalTo(pipeVec))
+                vecProtectStartToEnd.IsCodirectionalTo(pipeVec, _tolerance))
                 return false;
         }
 

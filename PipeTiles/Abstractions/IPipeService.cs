@@ -8,5 +8,5 @@ namespace PipeTiles;
 public interface IPipeService
 {
     List<Network> GetNetworks();
-    List<TilePipe> GetTilePipes(Network network);
+    List<TilePipe> GetTilePipes(Network network, PluginSettings settings);
 }

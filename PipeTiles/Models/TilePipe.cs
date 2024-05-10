@@ -20,6 +20,8 @@ public class TilePipe
     {
         PartSize = tilePipe.PartSize;
         Height = tilePipe.Height;
+        StartPoint = startPoint;
+        EndPoint = endPoint;
     }
 
     public string PartSize { get; }

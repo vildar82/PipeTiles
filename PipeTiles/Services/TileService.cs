@@ -10,24 +10,21 @@ namespace PipeTiles;
 public class TileService : ITileService
 {
     private readonly ITransactionService _transactionService;
-    private readonly PluginSettings _pluginSettings;
     private double _tileLength;
     private double _tileWidth;
     private double _tileThickness;
 
-    public TileService(
-        ITransactionService transactionService,
-        PluginSettings pluginSettings)
+    public TileService(ITransactionService transactionService)
     {
         _transactionService = transactionService;
-        _pluginSettings = pluginSettings;
     }
 
-    public void CreateTiles(List<TilePipe> pipes, string networkName)
+    public int CreateTiles(List<TilePipe> pipes, string networkName, PluginSettings settings)
     {
-        _tileLength = _pluginSettings.TileLength.ConvertMmToM();
-        _tileWidth = _pluginSettings.TileWidth.ConvertMmToM();
-        _tileThickness = _pluginSettings.TileThickness.ConvertMmToM();
+        var tileCount = 0;
+        _tileLength = settings.TileLength.ConvertMmToM();
+        _tileWidth = settings.TileWidth.ConvertMmToM();
+        _tileThickness = settings.TileThickness.ConvertMmToM();
 
         _transactionService.RunInDocumentTransaction((d, tw) =>
         {
@@ -38,23 +35,26 @@ public class TileService : ITileService
 
             foreach (var pipe in pipes)
             {
-                var tileSolids = CreatePipeTiles(pipe);
+                var tileSolids = CreatePipeTiles(pipe, settings);
 
                 foreach (var tileSolid in tileSolids)
                 {
                     tileSolid.LayerId = layerId;
-                    tileSolid.ColorIndex = _pluginSettings.TileColorIndex;
+                    tileSolid.ColorIndex = settings.TileColorIndex;
                     AppendEntity(ms, tileSolid, t);
+                    tileCount++;
                 }
             }
 
             doc.TransactionManager.QueueForGraphicsFlush();
         });
+
+        return tileCount;
     }
 
-    private IEnumerable<Solid3d> CreatePipeTiles(TilePipe pipe)
+    private IEnumerable<Solid3d> CreatePipeTiles(TilePipe pipe, PluginSettings settings)
     {
-        var offsetY = _pluginSettings.VerticalOffsetTiles.ConvertMmToM() + pipe.Height;
+        var offsetY = settings.VerticalOffsetTiles.ConvertMmToM() + pipe.Height;
         var pipeVec = pipe.EndPoint - pipe.StartPoint;
         var xVec = pipeVec.GetNormal();
         var yVec = xVec.GetPerpendicularVector();
@@ -64,8 +64,8 @@ public class TileService : ITileService
         while ((point - pipe.StartPoint).Length <= pipeVec.Length)
         {
             var remainPipeLength = (point - pipe.EndPoint).Length;
-            if (remainPipeLength.IsZero())
-                yield break;
+            if (remainPipeLength < 0.01)
+                break;
 
             var currentTileLength = remainPipeLength >= _tileLength ? _tileLength : remainPipeLength;
             var tileMovePoint = point + xVec * currentTileLength * 0.5;
@@ -75,7 +75,7 @@ public class TileService : ITileService
                 tileMovePoint.Move(0, 0, offsetY), xVec, yVec, zVec);
 
             var solid = new Solid3d();
-            solid.CreateBox(_tileLength, _tileWidth, _tileThickness);
+            solid.CreateBox(currentTileLength, _tileWidth, _tileThickness);
 
             solid.TransformBy(matrixAlign);
             yield return solid;

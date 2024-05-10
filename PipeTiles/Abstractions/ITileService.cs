@@ -12,5 +12,6 @@ public interface ITileService
     /// </summary>
     /// <param name="pipes">Список участков труб.</param>
     /// <param name="networkName">Имя сети.</param>
-    void CreateTiles(List<TilePipe> pipes, string networkName);
+    /// <param name="settings"><see cref="PluginSettings"/>.</param>
+    int CreateTiles(List<TilePipe> pipes, string networkName, PluginSettings settings);
 }
