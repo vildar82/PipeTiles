@@ -1,0 +1,35 @@
+﻿<Project>
+    <PropertyGroup>
+        <TargetFramework>net472</TargetFramework>
+        <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+        <PlatformTarget>x64</PlatformTarget>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <LangVersion>default</LangVersion>
+        <Nullable>enable</Nullable>
+        <Optimize>false</Optimize>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="IsExternalInit" Version="1.0.3" ExcludeAssets="runtime;build" />
+    </ItemGroup>
+
+    <ItemGroup Condition=" '$(UseDI)' == 'true' ">
+        <PackageReference Include="RxBim.Di" Version="2.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup Condition=" '$(UseCivilTools)' == 'true' ">
+        <PackageReference Include="RxBim.Tools.Civil" Version="2019.0.6-dev003"/>
+        <PackageReference Include="RxBim.Tools.Autocad" Version="2019.2.6-dev003"/>
+    </ItemGroup>
+
+    <ItemGroup Condition=" '$(IsCivilCommand)' == 'true' ">
+        <PackageReference Include="RxBim.Command.Civil.2019" Version="1.0.5"/>
+    </ItemGroup>
+
+    <ItemGroup Condition=" '$(IsApplication)' == 'true' ">
+        <PackageReference Include="RxBim.Application.Autocad.2019" Version="1.3.3"/>
+        <PackageReference Include="RxBim.Application.Ribbon.Autocad.2019" Version="2.3.3"/>
+    </ItemGroup>
+
+</Project>

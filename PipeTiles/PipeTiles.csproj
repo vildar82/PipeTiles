@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <Version>1.0.0</Version>
+        <IsApplication>true</IsApplication>
+        <IsCivilCommand>true</IsCivilCommand>
+        <UseCivilTools>true</UseCivilTools>
+        <UseWpf>true</UseWpf>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <OutputPath>$(AppData)\Autodesk\ApplicationPlugins\PipeTiles.bundle\PipeTiles\</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <None Update="appsettings.PipeTiles.json" CopyToOutputDirectory="Always"/>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <PackageGuid>5dfde1e5-7f66-4dfc-a118-c978d8bf135d</PackageGuid>
+        <UpgradeCode>7e74c626-8186-49bd-bc8b-8d8d36c2d9c8</UpgradeCode>
+    </PropertyGroup>
+    
+</Project>
