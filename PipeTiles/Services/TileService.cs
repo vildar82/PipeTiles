@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
@@ -59,32 +60,40 @@ public class TileService : ITileService
         var xVec = pipeVec.GetNormal();
         var yVec = xVec.GetPerpendicularVector();
         var zVec = xVec.CrossProduct(yVec);
-        var point = pipe.StartPoint;
+        var tilesCount = Math.Ceiling(pipeVec.Length / _tileLength);
+        var tilesLength = tilesCount * _tileLength;
+        var tilePoint = GetStartTilePoint(pipeVec, pipe.StartPoint, tilesLength);
 
-        while ((point - pipe.StartPoint).Length <= pipeVec.Length)
+        for (var i = 0; i < tilesCount; i++)
         {
-            var remainPipeLength = (point - pipe.EndPoint).Length;
-            if (remainPipeLength < 0.01)
-                break;
-
-            var currentTileLength = remainPipeLength >= _tileLength ? _tileLength : remainPipeLength;
-            var tileMovePoint = point + xVec * currentTileLength * 0.5;
+            var tileMovePoint = tilePoint + xVec * _tileLength * 0.5;
 
             var matrixAlign = Matrix3d.AlignCoordinateSystem(
                 Point3d.Origin, Vector3d.XAxis, Vector3d.YAxis, Vector3d.ZAxis,
                 tileMovePoint.Move(0, 0, offsetY), xVec, yVec, zVec);
 
             var solid = new Solid3d();
-            solid.CreateBox(currentTileLength, _tileWidth, _tileThickness);
+            solid.CreateBox(_tileLength, _tileWidth, _tileThickness);
 
             solid.TransformBy(matrixAlign);
             yield return solid;
 
-            point += xVec * currentTileLength;
+            tilePoint += xVec * _tileLength;
         }
     }
 
-    private void AppendEntity(BlockTableRecord ms, Entity entity, Transaction t)
+    private static Point3d GetStartTilePoint(Vector3d pipeVec, Point3d startPoint, double tilesLength)
+    {
+        var pipeLength = pipeVec.Length;
+
+        if (tilesLength.IsEqualOrLess(pipeLength))
+            return startPoint;
+
+        var overLength = tilesLength - pipeLength;
+        return startPoint + pipeVec.Negate().GetNormal() * overLength * 0.5;
+    }
+
+    private static void AppendEntity(BlockTableRecord ms, Entity entity, Transaction t)
     {
         ms.AppendEntity(entity);
         t.AddNewlyCreatedDBObject(entity, true);
